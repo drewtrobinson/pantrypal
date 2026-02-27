@@ -12,23 +12,25 @@
         .tab-content { display: none; }
         .active-tab { display: block; }
         .low-stock { border-left: 6px solid #db2777; }
-        #reader video { border-radius: 2rem; }
+        .pink-glow { box-shadow: 0 15px 30px -5px rgba(219, 39, 119, 0.4); }
+        input:focus, select:focus { border-color: #db2777 !important; ring: 2px solid #db2777; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200 hide-scroll">
 
     <div id="auth-screen" class="fixed inset-0 bg-pink-600 z-[200] flex items-center justify-center p-6 hidden">
-        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[2.5rem] p-10 text-center shadow-2xl">
-            <h2 class="text-3xl font-black text-pink-600 mb-2">PantryPal Pro</h2>
-            <input type="email" id="auth-email" placeholder="Email" class="w-full p-4 bg-gray-100 dark:bg-gray-700 rounded-2xl mb-4 outline-none">
-            <input type="password" id="auth-password" placeholder="Password" class="w-full p-4 bg-gray-100 dark:bg-gray-700 rounded-2xl mb-4 outline-none">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[3rem] p-10 text-center shadow-2xl">
+            <h2 class="text-3xl font-black text-pink-600 mb-6 uppercase tracking-tighter">PantryPal Pro</h2>
+            <input type="email" id="auth-email" placeholder="Email" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl mb-4 outline-none border-2 border-transparent">
+            <input type="password" id="auth-password" placeholder="Password" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl mb-4 outline-none border-2 border-transparent">
             <button onclick="handleAuth('login')" class="w-full py-4 bg-pink-600 text-white rounded-2xl font-black shadow-lg mb-2">LOGIN</button>
             <button onclick="handleAuth('signup')" class="w-full py-4 text-pink-600 font-black">SIGN UP</button>
         </div>
     </div>
 
     <div id="onboarding-screen" class="fixed inset-0 bg-pink-600 z-[150] flex items-center justify-center p-6 hidden">
-        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[2.5rem] p-10 text-center shadow-2xl">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[3rem] p-10 text-center shadow-2xl">
             <h2 class="text-2xl font-black mb-6">Setup Household</h2>
             <button onclick="setupHousehold('create')" class="w-full py-4 bg-pink-600 text-white rounded-2xl font-black mb-4">CREATE NEW</button>
             <button onclick="setupHousehold('join')" class="w-full py-4 border-2 border-pink-600 text-pink-600 rounded-2xl font-black">JOIN WITH CODE</button>
@@ -37,10 +39,10 @@
 
     <div id="main-app" class="hidden">
         <header class="bg-pink-600 text-white p-5 sticky top-0 z-50 flex justify-between items-center shadow-md">
-            <h1 class="text-xl font-black uppercase tracking-tighter">PantryPal</h1>
+            <h1 class="text-xl font-black tracking-tighter uppercase">PantryPal</h1>
             <div class="flex gap-2">
                 <button onclick="window.startScanner()" class="bg-pink-500 w-10 h-10 rounded-xl flex items-center justify-center"><i class="fas fa-barcode"></i></button>
-                <button onclick="window.openItemModal()" class="bg-white text-pink-600 px-4 py-2 rounded-xl font-black text-xs">ADD</button>
+                <button onclick="window.openItemModal()" class="bg-white text-pink-600 px-4 py-2 rounded-xl font-black text-xs">ADD ITEM</button>
             </div>
         </header>
 
@@ -52,7 +54,7 @@
             <section id="recipes" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-black">Recipe Kits</h2>
-                    <button onclick="window.createRecipe()" class="bg-pink-100 dark:bg-pink-900/30 text-pink-600 px-3 py-1 rounded-lg text-xs font-black">+ NEW</button>
+                    <button onclick="window.openRecipeModal()" class="bg-pink-600 text-white px-4 py-2 rounded-xl text-xs font-black">+ NEW KIT</button>
                 </div>
                 <div id="recipe-list" class="space-y-4"></div>
             </section>
@@ -64,46 +66,76 @@
 
             <section id="settings" class="tab-content">
                 <h2 class="text-2xl font-black mb-6">Settings</h2>
-                <div id="display-invite-code" class="bg-pink-600 p-8 rounded-[2.5rem] text-white font-black text-center mb-6 text-3xl tracking-widest uppercase shadow-xl">------</div>
-                <button onclick="window.toggleDarkMode()" class="w-full p-5 bg-white dark:bg-gray-800 rounded-2xl font-black mb-4 text-left flex justify-between">Dark Mode <i class="fas fa-moon"></i></button>
-                <button onclick="window.handleLogout()" class="w-full p-5 text-red-500 font-black uppercase text-xs">Logout</button>
+                <div class="bg-pink-600 p-8 rounded-[2.5rem] text-white pink-glow mb-8 text-center">
+                    <p class="text-[10px] font-black uppercase opacity-70 mb-1">Invite Code</p>
+                    <h3 id="display-invite-code" class="text-4xl font-black tracking-widest uppercase mb-2">------</h3>
+                    <p class="text-[9px] font-bold opacity-60 uppercase">Share with your household</p>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border dark:border-gray-700 mb-6">
+                    <h4 class="font-black text-xs uppercase text-gray-400 mb-4">Locations / Categories</h4>
+                    <div id="category-manager-list" class="space-y-2 mb-4"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-cat-input" placeholder="New Location..." class="flex-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl text-sm outline-none">
+                        <button onclick="window.addCategory()" class="bg-pink-600 text-white px-4 rounded-xl"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+
+                <button onclick="window.toggleDarkMode()" class="w-full p-5 bg-white dark:bg-gray-800 rounded-2xl font-black text-left flex justify-between mb-4">Dark Mode <i class="fas fa-moon"></i></button>
+                <button onclick="window.handleLogout()" class="w-full p-5 text-red-500 font-black uppercase text-xs tracking-widest text-center mt-10">Sign Out</button>
             </section>
         </main>
 
-        <nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-4 flex justify-around z-50">
-            <button onclick="window.switchTab('dashboard', this)" class="text-pink-600 flex flex-col items-center"><i class="fas fa-list text-xl"></i><span class="text-[9px] font-black mt-1 uppercase">Pantry</span></button>
-            <button onclick="window.switchTab('recipes', this)" class="text-gray-400 flex flex-col items-center"><i class="fas fa-utensils text-xl"></i><span class="text-[9px] font-black mt-1 uppercase">Recipes</span></button>
-            <button onclick="window.switchTab('shopping', this)" class="text-gray-400 flex flex-col items-center relative"><i class="fas fa-shopping-cart text-xl"></i><span id="shop-badge" class="absolute -top-1 -right-1 bg-pink-600 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center hidden">0</span><span class="text-[9px] font-black mt-1 uppercase">Shop</span></button>
-            <button onclick="window.switchTab('settings', this)" class="text-gray-400 flex flex-col items-center"><i class="fas fa-cog text-xl"></i><span class="text-[9px] font-black mt-1 uppercase">Set</span></button>
+        <nav class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-t dark:border-gray-700 p-4 flex justify-around z-50">
+            <button onclick="window.switchTab('dashboard', this)" class="text-pink-600 flex flex-col items-center"><i class="fas fa-boxes-stacked text-xl"></i><span class="text-[9px] font-black mt-1 uppercase tracking-tighter">Pantry</span></button>
+            <button onclick="window.switchTab('recipes', this)" class="text-gray-400 flex flex-col items-center"><i class="fas fa-utensils text-xl"></i><span class="text-[9px] font-black mt-1 uppercase tracking-tighter">Recipes</span></button>
+            <button onclick="window.switchTab('shopping', this)" class="text-gray-400 flex flex-col items-center relative"><i class="fas fa-shopping-cart text-xl"></i><span id="shop-badge" class="absolute -top-1 -right-1 bg-pink-600 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center hidden font-black">0</span><span class="text-[9px] font-black mt-1 uppercase tracking-tighter">Shop</span></button>
+            <button onclick="window.switchTab('settings', this)" class="text-gray-400 flex flex-col items-center"><i class="fas fa-sliders text-xl"></i><span class="text-[9px] font-black mt-1 uppercase tracking-tighter">Set</span></button>
         </nav>
     </div>
 
-    <div id="scanner-overlay" class="fixed inset-0 bg-black z-[400] hidden flex flex-col p-6">
-        <div id="reader" class="flex-1 rounded-3xl overflow-hidden"></div>
-        <button onclick="window.stopScanner()" class="mt-6 py-4 bg-pink-600 text-white rounded-2xl font-black uppercase tracking-widest">Close</button>
-    </div>
-
     <div id="modal-overlay" class="fixed inset-0 bg-black/60 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl">
-            <h3 id="modal-title" class="text-xl font-black text-pink-600 mb-6 uppercase">Details</h3>
+        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[3rem] p-8 shadow-2xl">
+            <h3 id="modal-title" class="text-xl font-black text-pink-600 mb-6 uppercase tracking-tighter">Item Details</h3>
             <form id="item-form" class="space-y-4">
                 <input type="hidden" id="modal-item-id">
                 <input type="text" id="modal-item-name" placeholder="Item Name" required class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none text-sm font-bold">
                 <div class="grid grid-cols-2 gap-4">
                     <input type="number" step="0.01" id="modal-item-price" placeholder="Price $" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none text-sm font-bold">
-                    <input type="number" id="modal-item-qty" placeholder="Qty" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none text-sm font-bold">
+                    <input type="number" id="modal-item-qty" placeholder="Current Qty" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none text-sm font-bold">
                 </div>
                 <select id="modal-item-category" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none text-sm font-bold"></select>
                 <div class="flex gap-2 pt-6">
                     <button type="button" onclick="window.closeItemModal()" class="flex-1 py-4 text-gray-400 font-bold uppercase text-xs">Cancel</button>
                     <button type="submit" class="flex-1 py-4 bg-pink-600 text-white rounded-2xl font-black shadow-lg uppercase text-xs tracking-widest">Save</button>
                 </div>
-                <button type="button" id="modal-delete-btn" onclick="window.deleteItem()" class="w-full text-red-500 text-[10px] font-black mt-4 uppercase hidden">Delete</button>
+                <button type="button" id="modal-delete-btn" onclick="window.deleteItem()" class="w-full text-red-500 text-[10px] font-black mt-4 uppercase hidden">Delete Item</button>
             </form>
         </div>
     </div>
 
+    <div id="recipe-modal-overlay" class="fixed inset-0 bg-black/60 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[3rem] p-8 shadow-2xl">
+            <h3 class="text-xl font-black text-pink-600 mb-6 uppercase tracking-tighter">New Recipe Kit</h3>
+            <div class="space-y-4 overflow-y-auto max-h-[60vh] pr-2">
+                <input type="text" id="recipe-name-input" placeholder="Kit Name (e.g. Taco Night)" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none text-sm font-bold">
+                <div id="recipe-ingredients-list" class="space-y-2">
+                    </div>
+                <button onclick="window.addIngredientRow()" class="w-full py-2 text-pink-600 text-[10px] font-black uppercase">+ Add Ingredient</button>
+            </div>
+            <div class="flex gap-2 pt-6">
+                <button onclick="window.closeRecipeModal()" class="flex-1 py-4 text-gray-400 font-bold uppercase text-xs">Cancel</button>
+                <button onclick="window.saveRecipe()" class="flex-1 py-4 bg-pink-600 text-white rounded-2xl font-black shadow-lg uppercase text-xs tracking-widest">Create Kit</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scanner-overlay" class="fixed inset-0 bg-black z-[400] hidden flex flex-col p-6">
+        <div id="reader" class="flex-1 rounded-3xl overflow-hidden"></div>
+        <button onclick="window.stopScanner()" class="mt-6 py-4 bg-pink-600 text-white rounded-2xl font-black uppercase tracking-widest">Stop Camera</button>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=3.0.1"></script>
+    <script src="app.js?v=4.0.1"></script>
 </body>
 </html>
