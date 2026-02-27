@@ -323,8 +323,121 @@ window.switchTab = (id, btn) => {
     document.querySelectorAll('nav button').forEach(b => b.classList.replace('text-pink-600', 'text-gray-400'));
     btn.classList.replace('text-gray-400', 'text-pink-600');
 };
+
+let isSelectionMode = false;
+let selectedItems = [];
+let currentViewingId = null; // Track which item is open in nutrition drawer
+
+// --- SELECTION MODE LOGIC ---
+window.toggleSelectionMode = () => {
+    isSelectionMode = !isSelectionMode;
+    selectedItems = [];
+    
+    const btn = document.getElementById('bulk-toggle-btn');
+    const bar = document.getElementById('bulk-bar');
+    
+    btn.innerText = isSelectionMode ? "Cancel" : "Select";
+    btn.classList.toggle('bg-gray-900', isSelectionMode);
+    bar.classList.toggle('translate-y-40', !isSelectionMode);
+    bar.classList.toggle('translate-y-0', isSelectionMode);
+    
+    renderDashboard();
+};
+
+window.toggleItemSelection = (id) => {
+    if (selectedItems.includes(id)) {
+        selectedItems = selectedItems.filter(i => i !== id);
+    } else {
+        selectedItems.push(id);
+    }
+    renderDashboard();
+};
+
+// --- BULK ACTIONS ---
+window.bulkAction = async (type) => {
+    if (selectedItems.length === 0) return alert("No items selected");
+    
+    if (type === 'delete') {
+        if (!confirm(`Delete ${selectedItems.length} items?`)) return;
+        await pantryDb.from('inventory').delete().in('id', selectedItems);
+    } else if (type === 'restock') {
+        // Increase all by 1
+        for (let id of selectedItems) {
+            const item = inventory.find(i => i.id === id);
+            await pantryDb.from('inventory').update({ qty: item.qty + 1 }).eq('id', id);
+        }
+    } else if (type === 'shop') {
+        // Set all to 0 so they hit shopping list
+        await pantryDb.from('inventory').update({ qty: 0, checked: false }).in('id', selectedItems);
+    }
+    
+    window.toggleSelectionMode(); // Exit selection mode
+    fetchData();
+};
+
+// --- NUTRITION FIX ---
+window.showNutrition = (id) => {
+    if (isSelectionMode) {
+        window.toggleItemSelection(id);
+        return;
+    }
+    
+    currentViewingId = id; // Store ID so Edit button knows what to open
+    const i = inventory.find(x => x.id === id);
+    
+    // Fill nutrition data...
+    document.getElementById('nutri-name').innerText = i.name;
+    document.getElementById('nutri-img').querySelector('img').src = i.image_url || "";
+    document.getElementById('nutri-cal').innerText = `${i.calories || 0} kcal`;
+    document.getElementById('nutri-pro').innerText = `${i.protein || 0}g`;
+    
+    document.getElementById('nutrition-overlay').classList.remove('hidden');
+};
+
+window.editFromNutrition = () => {
+    window.closeNutrition();
+    window.openItemModal(currentViewingId);
+};
+
+// --- UPDATED DASHBOARD RENDER ---
+function renderDashboard() {
+    let html = '';
+    categories.forEach(cat => {
+        const items = inventory.filter(i => i.category === cat.name);
+        if (items.length) {
+            html += `<div class="mb-8"><h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 px-2">${cat.name}</h3>`;
+            items.forEach(i => {
+                const isSelected = selectedItems.includes(i.id);
+                html += `
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-3xl border border-gray-100 dark:border-gray-700 flex items-center gap-3 mb-3 shadow-sm ${i.qty <= i.min ? 'low-stock' : ''} ${isSelected ? 'ring-2 ring-pink-600' : ''}">
+                        ${isSelectionMode ? `
+                            <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="window.toggleItemSelection('${i.id}')" class="w-5 h-5 accent-pink-600">
+                        ` : ''}
+                        
+                        <div onclick="window.showNutrition('${i.id}')" class="flex-1">
+                            <h4 class="font-black text-sm">${i.name}</h4>
+                            <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">$${i.price} • Min: ${i.min}</p>
+                        </div>
+                        
+                        ${!isSelectionMode ? `
+                        <div class="flex items-center gap-3">
+                            <button onclick="window.updateQty('${i.id}', -1)" class="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-700 font-black">-</button>
+                            <span class="font-black text-lg w-4 text-center">${i.qty}</span>
+                            <button onclick="window.updateQty('${i.id}', 1)" class="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-900/30 text-pink-600 font-black">+</button>
+                        </div>
+                        ` : ''}
+                    </div>`;
+            });
+            html += `</div>`;
+        }
+    });
+    document.getElementById('inventory-list').innerHTML = html || `<p class="text-center py-20 opacity-30 font-black text-xs">Pantry Empty</p>`;
+}
+
 window.toggleDarkMode = () => document.documentElement.classList.toggle('dark');
 window.handleLogout = async () => { await pantryDb.auth.signOut(); location.reload(); };
+
+
 
 // RUN
 init();
