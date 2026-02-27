@@ -1,25 +1,102 @@
-<div id="main-app" class="hidden">
-    <header class="bg-pink-600 text-white p-5 sticky top-0 z-50 flex justify-between items-center shadow-md">
-        <h1 class="text-xl font-black tracking-tighter uppercase">PantryPal</h1>
-        <div class="flex gap-2">
-            <button id="bulk-toggle-btn" onclick="window.toggleSelectionMode()" class="bg-pink-500 px-3 py-2 rounded-xl text-[10px] font-black uppercase">Select</button>
-            <button onclick="window.startScanner()" class="bg-pink-500 w-10 h-10 rounded-xl flex items-center justify-center"><i class="fas fa-barcode"></i></button>
-            <button onclick="window.openItemModal()" class="bg-white text-pink-600 px-4 py-2 rounded-xl font-black text-xs uppercase">Add</button>
-        </div>
-    </header>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PantryPal Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        /* Essential overrides to ensure the app feels like an app */
+        .tab-content { display: none; }
+        .active-tab { display: block; }
+        .low-stock { border-left: 6px solid #db2777; background: rgba(219, 39, 119, 0.05); }
+        .pink-glow { box-shadow: 0 15px 30px -5px rgba(219, 39, 119, 0.4); }
+        #reader video { border-radius: 2rem; object-fit: cover; width: 100% !important; }
+        /* Smooth transitions for the bulk bar */
+        .bulk-bar-hidden { transform: translateY(200%); }
+        .bulk-bar-visible { transform: translateY(0); }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
 
-    <main class="p-4 pb-40 container mx-auto">
-        <section id="dashboard" class="tab-content active-tab">
-            <div id="inventory-list" class="space-y-8"></div>
-        </section>
+    <div id="auth-screen" class="fixed inset-0 bg-pink-600 z-[200] flex items-center justify-center p-6 hidden">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[3rem] p-10 text-center shadow-2xl">
+            <h2 class="text-3xl font-black text-pink-600 mb-6 uppercase tracking-tighter">PantryPal Pro</h2>
+            <div class="space-y-4">
+                <input type="email" id="auth-email" placeholder="Email" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none border-2 border-transparent focus:border-pink-500">
+                <input type="password" id="auth-password" placeholder="Password" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none border-2 border-transparent focus:border-pink-500">
+                <button onclick="handleAuth('login')" class="w-full py-4 bg-pink-600 text-white rounded-2xl font-black shadow-lg">LOGIN</button>
+                <button onclick="handleAuth('signup')" class="w-full py-4 text-pink-600 font-black">SIGN UP</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="onboarding-screen" class="fixed inset-0 bg-pink-600 z-[150] flex items-center justify-center p-6 hidden">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[3rem] p-10 text-center shadow-2xl">
+            <h2 class="text-2xl font-black mb-6">Setup Household</h2>
+            <button onclick="setupHousehold('create')" class="w-full py-4 bg-pink-600 text-white rounded-2xl font-black mb-4">CREATE NEW</button>
+            <button onclick="setupHousehold('join')" class="w-full py-4 border-2 border-pink-600 text-pink-600 rounded-2xl font-black">JOIN WITH CODE</button>
+        </div>
+    </div>
+
+    <div id="main-app" class="hidden">
+        <header class="bg-pink-600 text-white p-5 sticky top-0 z-50 flex justify-between items-center shadow-md">
+            <h1 class="text-xl font-black uppercase tracking-tighter">PantryPal</h1>
+            <div class="flex gap-2">
+                <button id="bulk-toggle-btn" onclick="window.toggleSelectionMode()" class="bg-pink-500 px-3 py-2 rounded-xl text-[10px] font-black uppercase">Select</button>
+                <button onclick="window.startScanner()" class="bg-pink-500 w-10 h-10 rounded-xl flex items-center justify-center"><i class="fas fa-barcode"></i></button>
+                <button onclick="window.openItemModal()" class="bg-white text-pink-600 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest">Add</button>
+            </div>
+        </header>
+
+        <main class="p-4 pb-48 container mx-auto">
+            <section id="dashboard" class="tab-content active-tab">
+                <div id="inventory-list" class="space-y-6"></div>
+            </section>
+            
+            <section id="recipes" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-black">Recipe Kits</h2>
+                    <button onclick="window.openRecipeModal()" class="text-pink-600 font-black text-xs tracking-widest">+ NEW KIT</button>
+                </div>
+                <div id="recipe-list" class="space-y-4"></div>
+            </section>
+
+            <section id="shopping" class="tab-content">
+                <h2 class="text-2xl font-black mb-6">Shopping List</h2>
+                <div id="shopping-list" class="space-y-3"></div>
+            </section>
+
+            <section id="settings" class="tab-content">
+                <h2 class="text-2xl font-black mb-6">Household</h2>
+                <div class="bg-pink-600 p-8 rounded-[2.5rem] text-white pink-glow mb-8 text-center">
+                    <p class="text-[10px] font-black uppercase opacity-70 mb-1">Join Code</p>
+                    <h3 id="display-invite-code" class="text-4xl font-black tracking-widest uppercase mb-2">------</h3>
+                </div>
+                <button onclick="window.toggleDarkMode()" class="w-full p-5 bg-white dark:bg-gray-800 rounded-2xl font-black flex justify-between mb-4">Dark Mode <i class="fas fa-moon"></i></button>
+                <button onclick="window.handleLogout()" class="w-full p-5 text-red-500 font-black uppercase text-xs tracking-widest text-center mt-6">Sign Out</button>
+            </section>
         </main>
 
-    <div id="bulk-bar" class="fixed bottom-24 left-4 right-4 bg-gray-900 text-white p-4 rounded-[2rem] shadow-2xl z-[100] flex justify-around items-center translate-y-40 transition-transform duration-300">
-        <button onclick="window.bulkAction('restock')" class="flex flex-col items-center gap-1"><i class="fas fa-plus-circle text-pink-500"></i><span class="text-[8px] font-black uppercase">Restock</span></button>
-        <button onclick="window.bulkAction('shop')" class="flex flex-col items-center gap-1"><i class="fas fa-cart-plus text-amber-500"></i><span class="text-[8px] font-black uppercase">To List</span></button>
-        <button onclick="window.bulkAction('delete')" class="flex flex-col items-center gap-1"><i class="fas fa-trash text-red-500"></i><span class="text-[8px] font-black uppercase">Delete</span></button>
-        <div class="h-8 w-px bg-gray-700"></div>
-        <button onclick="window.toggleSelectionMode()" class="text-[10px] font-black text-gray-400 uppercase">Cancel</button>
+        <div id="bulk-bar" class="fixed bottom-24 left-4 right-4 bg-gray-900 text-white p-5 rounded-[2.5rem] shadow-2xl z-[100] flex justify-around items-center bulk-bar-hidden transition-transform duration-300">
+            <button onclick="window.bulkAction('restock')" class="flex flex-col items-center gap-1"><i class="fas fa-plus-circle text-pink-500"></i><span class="text-[8px] font-black uppercase">Restock</span></button>
+            <button onclick="window.bulkAction('shop')" class="flex flex-col items-center gap-1"><i class="fas fa-cart-plus text-amber-500"></i><span class="text-[8px] font-black uppercase">To List</span></button>
+            <button onclick="window.bulkAction('delete')" class="flex flex-col items-center gap-1"><i class="fas fa-trash text-red-500"></i><span class="text-[8px] font-black uppercase">Delete</span></button>
+            <div class="h-8 w-px bg-gray-700"></div>
+            <button onclick="window.toggleSelectionMode()" class="text-[10px] font-black text-gray-400 uppercase">Close</button>
+        </div>
+
+        <nav class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-t dark:border-gray-700 p-4 flex justify-around z-50">
+            <button onclick="window.switchTab('dashboard', this)" class="text-pink-600 flex flex-col items-center"><i class="fas fa-boxes-stacked text-xl"></i><span class="text-[9px] font-black mt-1 uppercase">Pantry</span></button>
+            <button onclick="window.switchTab('recipes', this)" class="text-gray-400 flex flex-col items-center"><i class="fas fa-utensils text-xl"></i><span class="text-[9px] font-black mt-1 uppercase">Kits</span></button>
+            <button onclick="window.switchTab('shopping', this)" class="text-gray-400 flex flex-col items-center relative"><i class="fas fa-shopping-basket text-xl"></i><span id="shop-badge" class="absolute -top-1 -right-1 bg-pink-600 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center hidden font-black">0</span><span class="text-[9px] font-black mt-1 uppercase">Shop</span></button>
+            <button onclick="window.switchTab('settings', this)" class="text-gray-400 flex flex-col items-center"><i class="fas fa-gear text-xl"></i><span class="text-[9px] font-black mt-1 uppercase">Set</span></button>
+        </nav>
     </div>
 
     <div id="nutrition-overlay" class="fixed inset-0 bg-black/60 z-[350] hidden flex items-end justify-center backdrop-blur-sm">
@@ -32,11 +109,58 @@
                     <button onclick="window.editFromNutrition()" class="text-pink-600 text-[10px] font-black uppercase mt-1">Edit Item Details <i class="fas fa-edit ml-1"></i></button>
                 </div>
             </div>
-            <div id="nutri-grid" class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-2 gap-4">
                 <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl"><p class="text-[9px] font-black text-gray-400 uppercase mb-1">Calories</p><p id="nutri-cal" class="text-xl font-black text-pink-600">0 kcal</p></div>
                 <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl"><p class="text-[9px] font-black text-gray-400 uppercase mb-1">Protein</p><p id="nutri-pro" class="text-xl font-black text-emerald-500">0g</p></div>
             </div>
-            <button onclick="window.closeNutrition()" class="w-full mt-8 py-4 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded-2xl font-black">CLOSE</button>
+            <button onclick="window.closeNutrition()" class="w-full mt-8 py-4 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded-2xl font-black uppercase text-xs tracking-widest">Close</button>
         </div>
     </div>
-</div>
+
+    <div id="modal-overlay" class="fixed inset-0 bg-black/60 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[3rem] p-8 shadow-2xl">
+            <h3 id="modal-title" class="text-xl font-black text-pink-600 mb-6 uppercase tracking-widest">Item Details</h3>
+            <form id="item-form" class="space-y-4">
+                <input type="hidden" id="modal-item-id">
+                <input type="text" id="modal-item-name" placeholder="Item Name" required class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none text-sm font-bold">
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="number" step="0.01" id="modal-item-price" placeholder="Price $" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none text-sm font-bold">
+                    <input type="number" id="modal-item-qty" placeholder="Qty" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none text-sm font-bold">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="number" id="modal-item-min" placeholder="Min Alert" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none text-sm font-bold">
+                    <select id="modal-item-category" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none text-sm font-bold"></select>
+                </div>
+                <div class="flex gap-2 pt-6">
+                    <button type="button" onclick="window.closeItemModal()" class="flex-1 py-4 text-gray-400 font-bold uppercase text-xs">Cancel</button>
+                    <button type="submit" class="flex-1 py-4 bg-pink-600 text-white rounded-2xl font-black shadow-lg uppercase text-xs tracking-widest">Save</button>
+                </div>
+                <button type="button" id="modal-delete-btn" onclick="window.deleteItem()" class="w-full text-red-500 text-[10px] font-black mt-2 uppercase hidden">Delete Item</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="recipe-modal-overlay" class="fixed inset-0 bg-black/60 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[3rem] p-8 shadow-2xl">
+            <h3 class="text-xl font-black text-pink-600 mb-6 uppercase tracking-widest">New Recipe Kit</h3>
+            <div class="space-y-4">
+                <input type="text" id="recipe-name-input" placeholder="Kit Name" class="w-full p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl outline-none font-bold">
+                <div id="recipe-ingredients-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
+                <button onclick="window.addIngredientRow()" class="w-full py-2 text-pink-600 text-[10px] font-black uppercase tracking-widest">+ Add Ingredient</button>
+            </div>
+            <div class="flex gap-2 pt-6">
+                <button onclick="window.closeRecipeModal()" class="flex-1 py-4 text-gray-400 font-bold uppercase text-xs">Cancel</button>
+                <button onclick="window.saveRecipe()" class="flex-1 py-4 bg-pink-600 text-white rounded-2xl font-black shadow-lg uppercase text-xs">Create Kit</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scanner-overlay" class="fixed inset-0 bg-black z-[400] hidden flex flex-col p-6">
+        <div id="reader" class="flex-1 mb-6"></div>
+        <button onclick="window.stopScanner()" class="py-4 bg-pink-600 text-white rounded-2xl font-black uppercase tracking-widest">Close Camera</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js?v=6.0.1"></script>
+</body>
+</html>
