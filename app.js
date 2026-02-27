@@ -1,5 +1,5 @@
-const SB_URL = "https://YOUR_PROJECT.supabase.co";
-const SB_KEY = "YOUR_ANON_KEY";
+const SB_URL = "https://brgubymkaqzaaiwafivo.supabase.co";
+const SB_KEY = "sb_publishable_P07pP1pQUSjKxH7opu4knQ_pr4WPi9D";
 const supabase = window.supabase.createClient(SB_URL, SB_KEY);
 
 let user = null;
