@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PantryPal Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <style>
+        .tab-content { display: none; }
+        .active-tab { display: block; }
+        .low-stock { border-left: 6px solid #db2777; }
+        #reader video { border-radius: 2rem; }
+        .pink-shadow { box-shadow: 0 20px 25px -5px rgba(219, 39, 119, 0.2); }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+
+    <div id="auth-screen" class="fixed inset-0 bg-pink-600 z-[200] flex items-center justify-center p-6 hidden">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[3rem] p-10 text-center shadow-2xl">
+            <h2 class="text-3xl font-black text-pink-600 mb-2">PantryPal Pro</h2>
+            <p class="text-gray-400 text-sm mb-8">Household Inventory, Synced.</p>
+            <div class="space-y-4">
+                <input type="email" id="auth-email" placeholder="Email" class="w-full p-4 bg-gray-100 dark:bg-gray-700 rounded-2xl outline-none">
+                <input type="password" id="auth-password" placeholder="Password" class="w-full p-4 bg-gray-100 dark:bg-gray-700 rounded-2xl outline-none">
+                <button onclick="handleAuth('login')" class="w-full py-4 bg-pink-600 text-white rounded-2xl font-black shadow-lg">Login</button>
+                <button onclick="handleAuth('signup')" class="w-full py-4 text-pink-600 font-bold">Create Account</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="onboarding-screen" class="fixed inset-0 bg-pink-600 z-[150] flex items-center justify-center p-6 hidden">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[3rem] p-10 text-center shadow-2xl">
+            <h2 class="text-2xl font-black mb-6">Welcome Home</h2>
+            <button onclick="setupHousehold('create')" class="w-full py-4 bg-pink-600 text-white rounded-2xl font-black mb-3">Create New Household</button>
+            <button onclick="setupHousehold('join')" class="w-full py-4 border-2 border-pink-600 text-pink-600 rounded-2xl font-black">Join Existing</button>
+        </div>
+    </div>
+
+    <div id="main-app" class="hidden">
+        <header class="bg-pink-600 text-white p-5 sticky top-0 z-50 flex justify-between items-center shadow-md">
+            <h1 class="text-xl font-black tracking-tighter">PANTRYPAL</h1>
+            <div class="flex gap-3">
+                <button onclick="startScanner()" class="bg-pink-500 w-10 h-10 rounded-xl flex items-center justify-center"><i class="fas fa-barcode"></i></button>
+                <button onclick="openItemModal()" class="bg-white text-pink-600 px-4 py-2 rounded-xl font-black text-xs">ADD ITEM</button>
+            </div>
+        </header>
+
+        <main class="p-4 pb-28 container mx-auto">
+            <div id="dashboard" class="tab-content active-tab">
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-3xl shadow-sm border dark:border-gray-700 text-center">
+                        <p class="text-[9px] font-black text-gray-400 uppercase">Total Value</p>
+                        <p id="stat-value" class="text-xl font-black text-pink-600">$0.00</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-3xl shadow-sm border dark:border-gray-700 text-center">
+                        <p class="text-[9px] font-black text-gray-400 uppercase">Needs Stock</p>
+                        <p id="stat-low" class="text-xl font-black text-pink-600">0</p>
+                    </div>
+                </div>
+                <div id="inventory-list" class="space-y-8"></div>
+            </div>
+
+            <div id="recipes" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-black">Recipe Kits</h2>
+                    <button onclick="openRecipeModal()" class="text-pink-600 font-black text-xs">+ CREATE</button>
+                </div>
+                <div id="recipe-list" class="grid gap-4"></div>
+            </div>
+
+            <div id="shopping" class="tab-content">
+                <h2 class="text-2xl font-black mb-6">Shopping List</h2>
+                <div id="shopping-list" class="space-y-3"></div>
+            </div>
+
+            <div id="settings" class="tab-content">
+                <h2 class="text-2xl font-black mb-6">Settings</h2>
+                <div class="bg-pink-600 p-6 rounded-[2rem] text-white pink-shadow mb-6">
+                    <p class="text-[10px] font-black uppercase opacity-70">Household Code</p>
+                    <h3 id="display-invite-code" class="text-3xl font-black tracking-widest my-1">---</h3>
+                </div>
+                <div class="space-y-4">
+                    <button onclick="toggleDarkMode()" class="w-full p-5 bg-white dark:bg-gray-800 rounded-2xl font-bold text-left flex justify-between items-center">
+                        Dark Mode <i class="fas fa-moon"></i>
+                    </button>
+                    <button onclick="manageCategories()" class="w-full p-5 bg-white dark:bg-gray-800 rounded-2xl font-bold text-left flex justify-between items-center">
+                        Manage Categories <i class="fas fa-tags"></i>
+                    </button>
+                    <button onclick="handleLogout()" class="w-full p-5 text-red-500 font-bold">Logout</button>
+                </div>
+            </div>
+        </main>
+
+        <nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-4 flex justify-around z-50">
+            <button onclick="switchTab('dashboard', this)" class="text-pink-600 flex flex-col items-center"><i class="fas fa-box text-xl"></i><span class="text-[9px] font-black mt-1">PANTRY</span></button>
+            <button onclick="switchTab('recipes', this)" class="text-gray-400 flex flex-col items-center"><i class="fas fa-utensils text-xl"></i><span class="text-[9px] font-black mt-1">RECIPES</span></button>
+            <button onclick="switchTab('shopping', this)" class="text-gray-400 flex flex-col items-center relative"><i class="fas fa-shopping-cart text-xl"></i><span id="shop-badge" class="absolute -top-1 -right-1 bg-pink-600 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center hidden">0</span><span class="text-[9px] font-black mt-1">SHOP</span></button>
+            <button onclick="switchTab('settings', this)" class="text-gray-400 flex flex-col items-center"><i class="fas fa-user-friends text-xl"></i><span class="text-[9px] font-black mt-1">HOUSEHOLD</span></button>
+        </nav>
+    </div>
+
+    <div id="modal-overlay" class="fixed inset-0 bg-black/60 z-[300] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[2.5rem] p-8">
+            <div id="modal-content"></div>
+        </div>
+    </div>
+
+    <div id="scanner-overlay" class="fixed inset-0 bg-black z-[400] hidden flex flex-col p-6">
+        <div id="reader" class="flex-1"></div>
+        <button onclick="stopScanner()" class="mt-6 py-4 bg-pink-600 text-white rounded-2xl font-black">Close Scanner</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
