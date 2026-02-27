@@ -1,6 +1,8 @@
 const SB_URL = "https://brgubymkaqzaaiwafivo.supabase.co";
 const SB_KEY = "sb_publishable_P07pP1pQUSjKxH7opu4knQ_pr4WPi9D";
-const supabase = window.supabase.createClient(SB_URL, SB_KEY);
+
+// Use 'db' instead of 'supabase' to avoid the naming conflict
+const db = window.supabase.createClient(SB_URL, SB_KEY);
 
 let user = null;
 let household = null;
@@ -10,7 +12,7 @@ let html5QrCode = null;
 
 // --- INITIALIZATION ---
 async function init() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await db.auth.getSession();
     if (!session) {
         showScreen('auth-screen');
         return;
@@ -18,7 +20,7 @@ async function init() {
     user = session.user;
     
     // Check Profile
-    const { data: profile } = await supabase.from('profiles').select('*, households(*)').eq('id', user.id).single();
+    const { data: profile } = await db.from('profiles').select('*, households(*)').eq('id', user.id).single();
     
     if (!profile || !profile.household_id) {
         showScreen('onboarding-screen');
@@ -31,48 +33,48 @@ async function init() {
 }
 
 // --- AUTHENTICATION ---
-async function handleAuth(type) {
+window.handleAuth = async (type) => {
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
-    const { error } = type === 'signup' ? await supabase.auth.signUp({ email, password }) : await supabase.auth.signInWithPassword({ email, password });
+    const { error } = type === 'signup' ? await db.auth.signUp({ email, password }) : await db.auth.signInWithPassword({ email, password });
     if (error) alert(error.message);
     else init();
-}
+};
 
-async function handleLogout() {
-    await supabase.auth.signOut();
+window.handleLogout = async () => {
+    await db.auth.signOut();
     location.reload();
-}
+};
 
 // --- HOUSEHOLD SETUP ---
-async function setupHousehold(action) {
+window.setupHousehold = async (action) => {
     if (action === 'create') {
         const name = prompt("Household Name:");
+        if (!name) return;
         const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const { data: h } = await supabase.from('households').insert([{ name, invite_code: code }]).select().single();
-        await supabase.from('profiles').upsert({ id: user.id, household_id: h.id });
-        await supabase.from('categories').insert([{ household_id: h.id, name: 'Pantry' }, { household_id: h.id, name: 'Fridge' }]);
+        const { data: h } = await db.from('households').insert([{ name, invite_code: code }]).select().single();
+        await db.from('profiles').upsert({ id: user.id, household_id: h.id });
+        await db.from('categories').insert([{ household_id: h.id, name: 'Pantry' }, { household_id: h.id, name: 'Fridge' }]);
     } else {
         const code = prompt("Enter Invite Code:").toUpperCase();
-        const { data: h } = await supabase.from('households').select('id').eq('invite_code', code).single();
-        if (h) await supabase.from('profiles').upsert({ id: user.id, household_id: h.id });
+        const { data: h } = await db.from('households').select('id').eq('invite_code', code).single();
+        if (h) await db.from('profiles').upsert({ id: user.id, household_id: h.id });
         else return alert("Invalid Code");
     }
     init();
-}
+};
 
 // --- DATA & UI ---
 function syncData() {
-    // Realtime Listener
-    supabase.channel('pantry').on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => fetchData()).subscribe();
+    db.channel('pantry').on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => fetchData()).subscribe();
     fetchData();
 }
 
 async function fetchData() {
     const [inv, cats, recs] = await Promise.all([
-        supabase.from('inventory').select('*').eq('household_id', household.id),
-        supabase.from('categories').select('*').eq('household_id', household.id),
-        supabase.from('recipes').select('*, recipe_items(*)')
+        db.from('inventory').select('*').eq('household_id', household.id),
+        db.from('categories').select('*').eq('household_id', household.id),
+        db.from('recipes').select('*, recipe_items(*)')
     ]);
     inventory = inv.data || [];
     categories = cats.data || [];
@@ -138,82 +140,52 @@ function renderRecipes(recs) {
     `).join('');
 }
 
-// --- BARCODE SCANNER ---
-function startScanner() {
-    document.getElementById('scanner-overlay').classList.remove('hidden');
-    html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (barcode) => {
-        stopScanner();
-        fetchBarcodeData(barcode);
-    });
-}
-
-function stopScanner() {
-    if (html5QrCode) html5QrCode.stop();
-    document.getElementById('scanner-overlay').classList.add('hidden');
-}
-
-async function fetchBarcodeData(barcode) {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
-    const data = await res.json();
-    if (data.status === 1) {
-        const p = data.product;
-        // Open modal with pre-filled info
-        openItemModal(null, {
-            name: p.product_name,
-            calories: p.nutriments['energy-kcal_100g'],
-            barcode: barcode
-        });
-    } else {
-        alert("Product not in database.");
-    }
-}
-
 // --- UTILITIES ---
 function showScreen(id) {
-    ['auth-screen', 'onboarding-screen', 'main-app'].forEach(s => document.getElementById(s).classList.add('hidden'));
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('onboarding-screen').classList.add('hidden');
+    document.getElementById('main-app').classList.add('hidden');
     document.getElementById(id).classList.remove('hidden');
 }
 
-function switchTab(id, btn) {
+window.switchTab = (id, btn) => {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
     document.getElementById(id).classList.add('active-tab');
     document.querySelectorAll('nav button').forEach(b => b.classList.replace('text-pink-600', 'text-gray-400'));
     btn.classList.replace('text-gray-400', 'text-pink-600');
-}
+};
 
-async function updateQty(id, delta) {
+window.updateQty = async (id, delta) => {
     const item = inventory.find(i => i.id === id);
     const newQty = Math.max(0, item.qty + delta);
-    await supabase.from('inventory').update({ qty: newQty, checked: newQty > item.min ? false : item.checked }).eq('id', id);
-}
+    await db.from('inventory').update({ qty: newQty, checked: newQty > item.min ? false : item.checked }).eq('id', id);
+    fetchData();
+};
 
-async function toggleShopCheck(id, checked) {
-    await supabase.from('inventory').update({ checked }).eq('id', id);
-}
+window.toggleShopCheck = async (id, checked) => {
+    await db.from('inventory').update({ checked }).eq('id', id);
+    fetchData();
+};
 
-function toggleDarkMode() {
-    document.documentElement.classList.toggle('dark');
-}
-
-// Modal helper (Simplified for this workspace)
-window.openItemModal = (id = null, prefill = null) => {
-    const name = prefill ? prefill.name : (id ? inventory.find(i => i.id === id).name : "");
+window.openItemModal = async (id = null) => {
+    const name = id ? inventory.find(i => i.id === id).name : "";
     const itemName = prompt("Item Name:", name);
     if (!itemName) return;
-    const cat = prompt("Category:", categories[0].name);
+    
+    const cat = prompt("Category:", categories[0]?.name || "Pantry");
     const price = prompt("Price:", "0.00");
     
     const data = { 
         household_id: household.id, 
         name: itemName, 
         category: cat, 
-        price: parseFloat(price),
-        calories: prefill ? prefill.calories : 0
+        price: parseFloat(price) || 0
     };
     
-    if (id) supabase.from('inventory').update(data).eq('id', id).then(() => fetchData());
-    else supabase.from('inventory').insert([data]).then(() => fetchData());
+    if (id) await db.from('inventory').update(data).eq('id', id);
+    else await db.from('inventory').insert([data]);
+    fetchData();
 };
 
+// Start the app
 init();
